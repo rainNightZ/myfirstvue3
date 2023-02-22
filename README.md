@@ -48,3 +48,38 @@ let obj = reactive({
 1. 只可以定义对象类型响应式数据(对象,数组),可以直接监听到对象属性的更改,增加,删除,也可以直接监听到数组适用下标修改的值
 2. ref也可以创建响应式对象数据,但是ref定义的数据需要多取一层.value,而reactive则不用,所以创建对象类型的响应式数据使用reactive更方便一些
     > 注: 其实本质上,使用ref创建响应式对象,其ref内部也"求助"了reactive方法
+## vue3响应式原理
+1. 原理
+vue3通过使用es6新特性proxy构造函数.该构造函数返回一个源对象的代理对象,修改代理对象可实时更改源对象里面对应数据.该构造函数的第一个参数为源对象(也就是需要代理的对象),第二个参数为具体操作对象.具体操作对象里面拥有多种数据拦截方式.如
+    - get get方法接收两个参数,第一个为源对象,第二个为读取的key值
+    - set set方法接收三个参数,第一个为源对象,第二个为修改的key值,第三个为修改后的值
+    - deleteproperty 第一个参数为源对象,第二个参数为删除的key值
+2. 简单实现方法
+```js
+let person = {
+  name: 'zw',
+  age: 18
+}
+let p = new Proxy(person, {
+  get (target, propsName) {
+    console.log('有人读取了p身上的${propsName}属性')
+    return target[propsName]
+  },
+  set (target, propsName, value) {
+    console.log('有人修改了瓶身上的${propsName}属性,我要去更新页面啦~')
+    target[propsName] = value
+  }
+  deleteProerpty (target, propsName) {
+    console.log('有人删除了p身上的${propsName}属性,我要去更新页面啦~')
+    return delete target[propsName]
+  }
+})
+```
+> 注意: 此demo仅为简单实现,并非vue3底层真实实现.就是太low了
+
+> 可以看到,与vue2中的Object.defineProperty里面的get和set使用方法十分相似.不同的是vue3里面的proxy里面的get,set等可接收到读取/更改的key值,无需去遍历对象key值.
+---
+3. 与vue2的不同
+    - vue2是通过Object.defineproperty方法监听属性的get,set进行数据劫持,捕获到更改后对应更新页面.
+    - vue3使用的是es6新语法的proxy.该方法可创建出一个源对象的代理对象.并且可以通过proxy方法的第二个参数里面的get,set,deleteproperty,进行数据劫持,对应更新页面.
+    - vue3底层实现响应式的优势在于,proxy里面的get,set等拦截方法可接收到读取/修改的属性名,就无需再像vue2中循环遍历对象key值多次拦截.vue3可以做到一步到位,代码更简洁,实现更简单
