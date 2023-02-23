@@ -127,3 +127,110 @@ let p = new Proxy(person, {
     - 为何一定要使用Reflect对象,直接操作不好吗?
         - 直接操作对于封装框架并不友好,但是reflect对象可以通过返回值来判断成功失败,并不会直接抛出错误,省去了大量trycatch代码
         - Reflect正在尝试将Object上的方法移植过来(了解)
+## computed函数
+1. 用法与vue2中的computed配置功能一致
+2. 写法
+    ```js
+    import {reactive, computed} from 'vue'
+    export default {
+      setup () {
+        let person = reactive({
+          fristName: '张',
+          lastName: '三'
+        }) // 这个person是响应式的了
+        // 计算属性简写,没有考虑修改的情况
+        let fullName = computed(() = > {
+          return person.firstName + '-' + person.lastName
+        })
+        // 计算属性-完整写法(考虑读和写)
+        let fullName = computed({
+          get () {
+            return person.firstName + '-' + person.lastName
+          },
+          set (val) {
+            const nameArr = val.split('-')
+            person.firstName = nameArr[0]
+            person.lastName = nameArr[1]
+          }
+        })
+        return {
+          person,
+          fullName
+        }
+      }
+    }
+    ```
+    >其实和vue2的computed属性没什么变化
+## watch属性
+1. 第一种情况: 监听ref定义的一个基本类型数据
+    ```js
+    ...
+    let num = ref(0)
+    watch(num, (n, o) => {
+      console.log(n,o)
+    }, {
+      immediately: true
+    })
+    ```
+2. 第二种情况,监听过个ref定义的基本类型数据
+    ```js
+    let num = ref(0)
+    let msg = ref('你好呀')
+    watch([num, msg], (n, o) => {
+      console.log(n,o) // [numNewVal, msgNewVal] [numOldVal, msgOldVal]
+    })
+    ```
+3. 第三种情况,监听reactive定义的响应式对象类型数据
+    >注: 1. 这种情况下无法正确的获取oldValue,这个问题还没修复 2. 此情况下强制开启了深度监听模式 
+    ```js
+    let person = reactive({
+      name: '张三',
+      age: 18
+    })
+    watch(person, (n,o) => {
+      console.log(n,o)
+    } {deep: false}) // 此时已经强制开启深度监听了,所以deep属性无效
+    ```
+4. 第四种情况,监听reactive定义的响应式对象类型数据的某个属性
+    > 注: 此情况下监听reactive定义的数据的某个属性时,深度监听不再强制开启
+    ```js
+    let person = reactive({
+      name: '张三',
+      age: 18
+    })
+    // 只监听person里面的age属性,需要使用箭头函数
+    watch(() => person.age, (n,o) => {
+      consoele.log(n,o)
+    }, {deep: true}) // deep属性生效了
+    ```
+5. 第五种情况,监听多个reactive定义的响应式对象类型数据的属性(与2,4同理,需要使用数组)
+    ```js
+    let person = reactive({
+      name: '张三',
+      age: 18
+    })
+    watch([() => person.name,() => person.age], (n,o) => {
+      consoele.log(n,o)
+    }, {deep: true}) // deep属性生效了
+    ```
+6. 第六种情况,监听层级较深的情况
+    ```js
+    let person = reactive({
+      name: '张三',
+      age: 18,
+      job: {
+        job1: {
+          salary: '20k'
+        }
+      }
+    })
+    person.job.job1.salary = '100k'
+    watch(() => person.job, (n,o) => {
+      console.log(n,o)
+    },{ deep: true }) // 这里必须手动开启深度监听模式化,不然监听不到,挺坑的
+    ```
+7. 总结watch的坑
+    - 监听reactive定义的响应式数据时: oldValue无法正确获取
+    - 监听reactive定义的响应式数据时: 强制开启了深度监听(deep: false无效)
+    - 而监听reactive定义的响应式数据的某个属性时,深度监听没有强制开启,deep配置有效
+8. 鱿鱼溪根本不懂vue!!!!!我教教他吧
