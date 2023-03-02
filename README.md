@@ -161,7 +161,7 @@ let p = new Proxy(person, {
     }
     ```
     >其实和vue2的computed属性没什么变化
-## watch属性
+## watch函数
 1. 第一种情况: 监听ref定义的一个基本类型数据
     ```js
     ...
@@ -234,3 +234,71 @@ let p = new Proxy(person, {
     - 监听reactive定义的响应式数据时: 强制开启了深度监听(deep: false无效)
     - 而监听reactive定义的响应式数据的某个属性时,深度监听没有强制开启,deep配置有效
 8. 鱿鱼溪根本不懂vue!!!!!我教教他吧
+## watchEffect函数
+1. 定义:watchEffect里面依赖的数据变化即执行(和computed有点相似)
+2. 写法
+  ```js
+  let sum = ref(0)
+  let person = reactive({
+    name: 'zw',
+    age: 18
+  })
+  watchEffect(() => {
+    let x1 = sum.value
+    let x2 = person.age
+    console.log('watchEffect函数执行了') // 不需要传监听那个数据,也不需要获取newVal和oldVal
+  })
+  ```
+3. 特点
+    - 不需要传监听哪个属性,监视的回调用到了哪个属性,就监听哪个属性
+    - 不需要获取newval,oldVal的值
+4. 与`computed`对比
+    - `computed`更注重结果,所以需要返回值
+    - `watchEffect`更注重过程,所以不需要写返回值
+    - 两者都是依赖的数据发生了变化就会执行
+## vue3中的声明周期钩子
+1. 和vue2中声明周期钩子所做的事情,所执行的时机基本一致
+2. 特点(区别)
+    - 分两种写法
+        - 第一种是配置项写法.要写在setup函数外边,和vue2写法基本一致(除了beforeDestory, destoryed)
+        - 第二种是组合式api写法,要写在setup中,并且需要import引入(其实就是在前边加个on,没啥复杂地方)
+    - beforeDestory,destory这两个生命周期在vue3中更名为: beforeUnmount,unmounted(配置项写法)/onBeforeUnmount,onUnmounted(组合式api写法)
+    - 组合式api写法中,不再有beforeCreate,created钩子了,因为默认setup执行时机是beforeCreate之前
+    - 两种写法可以混用,虽然不推荐,但是组合式api的写法执行时机比配置项写法的执行时机要早一点
+3. 对照表
+    - `beforeCreate` ===> `setup`
+    - `created` ===> `setup`
+    - `beforeMount` ===> `onBeforeMount`
+    - `mounted` ===> `onMounted`
+    - `beforeUpdate` ===> `onBeforeUpdate`
+    - `updated` ===> `onUpdated`
+    - `beforeDestory` ===> `onBeforeUnmount`
+    - `destoryed` ===> `onUnmounted`
+4. 写法
+    - 组合式api写法
+        ```js
+          import {setup, onBeforeMount, onMounted, onBeforeUpdate, onUpdated, onBeforeUnmount, onUnmounted}
+          setup() {
+            onBeforeMount(() => {
+              conso.log('onBeforeMount')
+            })
+            onMounted(() => {
+              conso.log('onMounted')
+            })
+            onBeforeUpdate(() => {
+              conso.log('onBeforeUpdate')
+            })
+            onUpdated(() => {
+              conso.log('onUpdated')
+            })
+            onBeforeUnmount(() => {
+              conso.log('onBeforeUnmount')
+            })
+            onUnmounted(() => {
+              conso.log('onUnmounted')
+            })
+          }
+        ```
+    - 配置项写法与vue2一致,写在setup外即可
+5. 个人总结
+    - 其实生命周期没啥,就是注意destory那两个钩子更名了,组合式写法加个on就没啥了.不过不要混用,虽然可以但是开发中不合理也没必要.还是觉得使用组合式api会好一点
