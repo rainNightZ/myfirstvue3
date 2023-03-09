@@ -310,3 +310,51 @@ let p = new Proxy(person, {
 3. 特点
     - 与vue2mixins不同的是,hooks的钩子执行顺序是谁先调用谁先执行,且都会执行
     - 需要暴露出去才可以引用
+
+## toRef与toRefs
+1. 定义
+    - 创建一个ref对象,其value值指向领一个对象中的某个属性
+    - 个人理解
+        - 其实就是当一个对象里面有很多属性需要在模板中使用的时候,假如person,每次使用都要person.name,person.age...很麻烦.可以在return的时候使用,节省代码.
+        - 语法 `let name = toRef(person, 'name')`
+2. 应用: 要将响应式对象中的某个属性单独提供给外部使用时
+3. 扩展: toRefs与toRef功能一直,可以批量创建多个ref对象,语法 `toRefs(person)`
+4. 这个光看定义不太好懂,详情见代码
+    ```js
+    import { reactive, toRef, toRefs } from 'vue'
+    export default {
+      setup() {
+        let person = reactive({
+          name: '张三',
+          age: 18,
+          job: {
+            job1: {
+              salary: '20k'
+            }
+          }
+        })
+        return {
+          person // 此时,模板中想要是用需要person.name,person.age... 很麻烦.所以我们可以这样.见下
+        }
+        let name1 = toRef(person, 'name')
+        return {
+          name1
+        }
+        // 此时你是否想过,为什么不可以这样
+        return {
+          name: person.name, // 因为这样会丢失响应式,因为具有响应式的数据是整个对象,这样写就相当于 retur{name: '张三', age: 18},是死数据
+          age: person.age,
+          ...
+        }
+        // 到此为止,你又该想了,用什么toRef呀,直接用ref(person.name)多好,如下
+        return {
+          name: ref(person.name), // 这样确实可以实现响应式,可当你修改时就会发现,他并不会修改源对象person里面的数据,这样就相当于新定义了一个ref响应式数据
+          ...
+        }
+        // 最后再看toRefs,如果有多个属性的话可以这样
+        return {
+          ...toRefs(person)
+        }
+      }
+    }
+    ```
