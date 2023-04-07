@@ -3,6 +3,7 @@ import Home from '../views/index.vue'
 import Reactive from '../modules/capi/reactive.vue'
 import Watch from '../modules/capi/watch.vue'
 import Hooks from '../modules/capi/hooks.vue'
+import Row from '../modules/capi/row.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -22,6 +23,10 @@ const router = createRouter({
     {
       path: '/hooks',
       component: Hooks
+    },
+    {
+      path: '/row',
+      component: Row
     }
   ],
 });

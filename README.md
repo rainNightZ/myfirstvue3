@@ -358,3 +358,146 @@ let p = new Proxy(person, {
       }
     }
     ```
+## shallowReactive和shallowRef
+1. 定义
+    - shallowReactive只会实现对象第一层的响应式(浅层响应式).
+        - 用处: 性能优化的时候,虽然有一个嵌套很深的对象,但是只有第一层需要响应式的时候就可以用
+    - shallowRef: 只处理基本数据类型的响应式,不处理对象类型的响应式,用处同
+2. 写法
+    ```js
+    let person = shallowReactive({
+      name: '张三',
+      age: 18,
+      job: {
+        job1: {
+          salary: '20k' // 深层的变化前听不到 只会监听到第一层
+        }
+      }
+    })
+    let x = shallowRef({
+      y: 1 // 此时x.y不是响应式的,但是整个x是响应式的
+    })
+    ```
+3. 个人总结: 没啥用感觉,除了做一下性能优化,没有东西
+## readonly与shallowReadonly
+1. 定义
+    - readonly: 让一个响应式数据变成只读,并且是深层次的只读.
+    - shallowReadonly: 让一个响应式数据变成只读,浅层次的.也就是说对象里面嵌套对象里面的值依然可以修改
+2. 用法
+    ```js
+    let person = {
+      name: '张三',
+      age: 18,
+      job: {
+        job1: {
+          salary: '29k'
+        }
+      }
+    }
+    person = readonly(person) // 此时person里面的所有的值都不可修改了,修改控制台会报警告
+    person = shallowReadonly(person) // salary依旧可以修改,因为是深层次的
+    ```
+3. 个人理解
+    - 此时会感觉到很奇怪,既然我已经定义了响应式数据,那么我就是需要更改它以更新页面,毕竟响应式数据第一步就是要更改.若是如此为何我不在一开始就定义一个死数据呢.
+    有两点: 
+      1. 禁止修改是从根处解决问题,定义普通数据再去更改只不过不会反映到页面上而已,实际数据已经更改了. 
+      2. 我们假设一种场景,我需要使用另一个人的组件.那人说你用可以,但是不可以改组件里面的数据,不然会影响其他页面.那么我们可以在拿到数据后,直接让其只读,避免出错
+## toRaw与markRaw
+1. 定义
+    - toRaw: 获取一个响应式对象的普通对象,对此对象的所有操作不会引起页面更新(不可对ref定义的普通数据使用)
+    - markRaw: 标记一个对象,使其永远不会成为一个响应式对象.可以在获取到较大数据切只有展示需求时使用.节省性能
+2. 用法
+    ```js
+    let person = reactive({
+      name: '张三',
+      age: 18,
+      job: {
+        job1: {
+          salary: 20
+        }
+      }
+    })
+    let p = toRaw(person) // 此时对p的任何操作均不会引起页面更新
+    p.name = '李四'
+    console.log(person,p) // 此时两个对象里面的name都被修改为李四了,亲测.
+
+    ////////////////////////////////////
+
+    let car = {
+      name: '大众',
+      price: 20
+    }
+    markRaw(car) // 此时car不会成为一个响应式对象了
+    person.car = car  // 修改person.car.name  不会引起页面更新
+    ```
+3. vue3做了很多类似自相矛盾的事情,其实通过安全性,性能考虑,有些方法还是比较有必要的
+## customRef
+1. 定义: 
+    - 自定义的ref,通俗的说,与ref的区别是: ref是精装房,customRef是毛坯房,但是customRef可以做很多自定义逻辑
+2. 直接看用法,我要实现一个在输入框输入信息,在输入框底下对应展示并且延迟一秒才展示的功能.类似防抖
+    ```html
+    <template>
+      <input type="text" v-model="keyword">
+      <h3>{{ keyword }}</h3>
+    </template>
+    ```
+    ```js
+    import {ref, customRef} from 'vue'
+    export default {
+      setup () {
+        // 思路: 根据  let keyword = myRef('hello')可以得首先myRef一定是一个函数,并且需要接受参数,最后需要一个返回值
+        let myRef = (info) => {
+          return customRef((track, trigger) => {
+            return {
+              get () {
+                console.log('有人读取了我的属性')
+                track() // 追踪,告诉get需要追踪这个属性,否则不管你怎么改,get都不会从新执行一遍
+                return info
+              },
+              set (newValue) {
+                console.log('有人修改了我的属性')
+                info = newValue
+                trigger() // 告诉vue去重新解析模板
+              }
+            }
+          }) // 既然是自定义,那么一定会写逻辑,逻辑一般也只能写在函数里面,所以他需要接受一个函数(当然也可以直接看文档,因为文档里面就是这么要求的)主要是思路
+        }
+        let keyword = myRef('hello')
+        return {
+          keyword
+        }
+      }
+    }
+    ```
+3. 总结: 有点类似computed属性.他的作用是如果我需要在实现响应式的同时我还有其他的一些功能逻辑,可以用此方法.但是我觉得以后就在遇到了这种场景可能我也不会想起来用
+## provide与inject
+1. 定义: 适用于祖组件给孙组件传值,父组件给后代组件传值
+2. 用法
+    ```js
+    //父组件
+    let car = reactive({
+      name: 'bbb',
+      price: '20w'
+    })
+    provide('car', car) // 两个参数,第一个给这个数据起一个名字,第二个就是这个数据
+    ////////////////////////////////////////////
+
+    // 子组件
+     let car = inject('car') // 父组件提供了,后代组件就可以呼唤它的名字获取到这个数据
+    ```
+
+## fragment
+1. 定义: 在vue3中,可以没有跟标签,vue3会把多个标签最后包装到一个fragment虚拟元素中
+2. 好处: 减少层级,减小内存占用
+
+## teleport组件
+1. 定义: 是一个传送组件,可以把嵌套层级很深的组件html结构传送到我们想要的位置
+2. 用法: 
+```html
+<!-- to代表传送的位置,可以写body -->
+<teleport to="html">
+  <button>我在某个孙组件当中</button>
+</teleport>
+<!-- 此时button就会从某个孙组件当中移动到html里面去. -->
+```
+3. 用处: 整体用处不知,但是胶乳我们需要在一个嵌套很深的组件里面写一个dialog,并且dialog有遮罩层,希望全局生效,那我们就可以把这个dialog传送到body,再去写样式
